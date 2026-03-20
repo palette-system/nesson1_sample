@@ -33,6 +33,7 @@ const char *keyboard_list[] = {
 };
 
 int menu_type;
+int battery_check;
 
 void pressKey(int menu_index) {
   if (menu_index == 0) {
@@ -94,11 +95,17 @@ void setup(void) {
   pinMode(GPIO_NUM_3, INPUT_PULLUP);
   bleKeyboard.setName("NessoN1");
   bleKeyboard.begin();
+  battery_check = 0;
 }
 
 
 void loop(void) {
-  int level = M5.Power.getBatteryLevel();
+  int level;
+  battery_check++;
+  if (battery_check > 1000) {
+    level = M5.Power.getBatteryLevel();
+    menu_obj._battery_level = level;
+  }
   menu_obj.menu_loop();
   if (menu_type == 0) {
     if (menu_obj.clicked >= 0) {
@@ -116,5 +123,6 @@ void loop(void) {
       menu_obj.set_menu((char **)&key_list, 14);
     }
   }
+  delay(5);
   
 }

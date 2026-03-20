@@ -11,6 +11,9 @@ NessoMenu::NessoMenu() {
     this->_menu_canvas->setFont(&fonts::lgfxJapanGothic_24);
     this->_menu_canvas->setTextColor(TFT_YELLOW);
     this->_menu_canvas->setTextSize(1);
+	
+	M5.Display.setFont(&fonts::lgfxJapanGothic_24);
+	M5.Display.setTextColor(TFT_YELLOW);
 
     this->btn_top.initButton(
         this->_menu_canvas,
@@ -34,6 +37,7 @@ NessoMenu::NessoMenu() {
         1, 1 // 文字の表示倍率 width, height
     );
     this->btn_bttom.drawButton();
+	this->_prev_battery_level = 0;
 }
 
 void NessoMenu::set_menu(char *menu_list_prm[], int menu_length_prm) {
@@ -43,16 +47,50 @@ void NessoMenu::set_menu(char *menu_list_prm[], int menu_length_prm) {
     this->_slide_index = 0;
     this->_touch_end = 1;
     this->clicked = -1;
+    this->_touch_start = millis();
 }
 
-
+int vx, vy, vt;
 
 void NessoMenu::menu_loop() {
     int set_index = 0;
     int check_index = 0;
+    unsigned long touch_time;
     this->clicked = -1;
     M5.update();
     auto t = M5.Touch.getDetail();
+    if ((t.y < 0 || t.y > 135 || t.x < 0 || t.x > 240)
+        && this->_battery_level == this->_prev_battery_level) {
+        return;
+    }
+	if (this->_battery_level != this->_prev_battery_level) {
+		this->_prev_battery_level = this->_battery_level;
+		this->_touch_end = 1;
+	}
+    if (t.state == 3) { // タッチスタート
+        this->_touch_start = millis();
+    }
+	if (t.state == 0) {
+		if (this->_display_on > 200) {
+			delay(10);
+			auto& ioe1 = M5.getIOExpander(1);
+			// ioe1.digitalWrite(1, true); // LCDリセット
+			ioe1.digitalWrite(6, false); // LCDバックライト
+			delay(10);
+			this->_display_on = 0;
+		} else if (this->_display_on > 0) {
+			this->_display_on++;
+		}
+	} else {
+		if (this->_display_on == 0) {
+			delay(10);
+			auto& ioe1 = M5.getIOExpander(1);
+			// ioe1.digitalWrite(1, false); // LCDリセット
+			ioe1.digitalWrite(6, true); // LCDバックライト
+			delay(10);
+		}
+		this->_display_on = 1;
+	}
 
     if (this->_prev_y != t.y) {
         if (t.state == 9 || t.state == 13) {
@@ -77,6 +115,7 @@ void NessoMenu::menu_loop() {
                 this->_slide_direction = 1;
             }
             this->_menu_canvas->pushSprite(&M5.Lcd, 0, 0 - this->_slide_index);
+    M5.Display.drawString(String(_battery_level) + "%", 190, 3);
         }
         this->_prev_y = t.y;
     }
@@ -97,6 +136,7 @@ void NessoMenu::menu_loop() {
                 this->btn_bttom.drawButton();
             }
             this->_menu_canvas->pushSprite(&M5.Lcd, 0, 0 - this->_slide_index);
+    M5.Display.drawString(String(_battery_level) + "%", 190, 3);
         } else if (this->_slide_index > 0) {
             this->_slide_index += 20;
             if (this->_slide_index >= 135) {
@@ -111,11 +151,13 @@ void NessoMenu::menu_loop() {
                 this->btn_bttom.drawButton();
             }
             this->_menu_canvas->pushSprite(&M5.Lcd, 0, 0 - this->_slide_index);
+    M5.Display.drawString(String(_battery_level) + "%", 190, 3);
         }
         if (this->_slide_index == 0) {
             this->btn_top.setLabelText(this->_menu_list[this->menu_select]);
             this->btn_top.drawButton();
             this->_menu_canvas->pushSprite(&M5.Lcd, 0, 0);
+    M5.Display.drawString(String(_battery_level) + "%", 190, 3);
             this->_touch_end = 0;
             this->_slide_direction = 1;
         }
@@ -129,6 +171,12 @@ void NessoMenu::menu_loop() {
     }
 
     if (t.wasClicked()) {
-        this->clicked = this->menu_select;
+        touch_time = millis() - this->_touch_start;
+        if (touch_time > 5 && touch_time < 200) {
+        	vx = t.x;
+        	vy = t.y;
+        	vt = touch_time;
+            this->clicked = this->menu_select;
+        }
     }
 }

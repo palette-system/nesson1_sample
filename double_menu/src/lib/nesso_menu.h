@@ -19,6 +19,10 @@ class NessoMenu {
     int _slide_pixel = 30;
     int _prev_touch_state;
     int clicked = -1;
+    int _battery_level;
+    int _prev_battery_level;
+    unsigned int _touch_start;
+	int _display_on = 0;
 
     NessoMenu();
     void set_menu(char *menu_list_prm[], int menu_length_prm);
